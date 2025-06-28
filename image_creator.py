@@ -3,8 +3,8 @@ import shutil
 import time
 from datetime import datetime
 
-SOURCE_DIR = "/home/debjit/spacy/image_search_from_folder/images/archive/images"  # 🔁 Replace with actual path
-DEST_BASE_DIR = "/home/debjit/spacy/image_search_project_v2/images"  # 🔁 Replace with actual path
+SOURCE_DIR = "/home/debjit/spacy/image_search_from_folder/images/archive/images" 
+DEST_BASE_DIR = "/home/debjit/spacy/image_search_project_v2/images"  
 
 # ✅ Ensure DEST_DIR is date-based
 today = datetime.today().strftime("%Y-%m-%d")
@@ -21,7 +21,7 @@ counter = 0
 for filename in sorted(os.listdir(SOURCE_DIR)):
     if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
         continue
-    if filename in os.listdir(BACKUP_DIR):  # ✅ FIXED: Check inside full backup path
+    if filename in os.listdir(BACKUP_DIR):  
         continue
 
     src_path = os.path.join(SOURCE_DIR, filename)

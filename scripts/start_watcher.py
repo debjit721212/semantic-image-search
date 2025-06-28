@@ -11,7 +11,7 @@ def run_continuous_ingestion():
         try:
             added = process_new_images()
             if added:
-                logging.info(f"✅ Ingested {added} new images.")
+                logging.info(f" Ingested {added} new images.")
         except Exception as e:
             logging.error(f"❌ Error during ingestion: {e}")
         time.sleep(SCAN_INTERVAL_SECS)

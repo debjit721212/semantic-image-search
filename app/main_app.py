@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 from config import IMAGE_DIR
 from search import perform_search
-# from caption import generate_caption
 from cache_manager import ensure_cache
 from database import  init_db,get_all_metadata, get_recent_metadata  #initialize_db,
 from utils import load_model

@@ -57,7 +57,7 @@ def build_full_cache():
     
 
 def update_cache_with_new_image(image_path, model, processor):
-    image_path = Path(image_path).resolve()  # ✅ Ensure absolute path
+    image_path = Path(image_path).resolve()  
 
     # Load existing cache
     try:
@@ -70,41 +70,18 @@ def update_cache_with_new_image(image_path, model, processor):
 
     # Avoid duplicate entries
     if str(image_path) in paths:
-        print(f"[ℹ️ Already Cached] {image_path.name}")
+        print(f"[ℹ Already Cached] {image_path.name}")
         return
 
-    print(f"[🧠 Encoding] {image_path.name}")
+    print(f"[ Encoding] {image_path.name}")
     new_emb = encode_image_file(image_path, model, processor)
 
     # Append and save
-    paths.append(str(image_path))  # ✅ Now always absolute
+    paths.append(str(image_path))  
     embeddings = np.vstack([embeddings, new_emb])
     np.savez(CACHE_PATH, paths=np.array(paths), embeddings=embeddings)
-    print(f"[✅ Cache Updated] Added {image_path.name}")
+    print(f"[ Cache Updated] Added {image_path.name}")
 
 
-# def update_cache_with_new_image(image_path, model, processor):
-#     # Load existing cache
-#     try:
-#         cache = np.load(CACHE_PATH, allow_pickle=True)
-#         paths = cache['paths'].tolist()
-#         embeddings = cache['embeddings']
-#     except FileNotFoundError:
-#         paths = []
-#         embeddings = np.empty((0, 512))
-
-#     # Avoid duplicate entries
-#     if str(image_path) in paths:
-#         print(f"[ℹ️ Already Cached] {image_path.name}")
-#         return
-
-#     print(f"[🧠 Encoding] {image_path.name}")
-#     new_emb = encode_image_file(image_path, model, processor)
-
-#     # Append and save
-#     paths.append(str(image_path))
-#     embeddings = np.vstack([embeddings, new_emb])
-#     np.savez(CACHE_PATH, paths=np.array(paths), embeddings=embeddings)
-#     print(f"[✅ Cache Updated] Added {image_path.name}")
 
 

@@ -27,7 +27,7 @@ def init_db():
 
 def insert_metadata(filename, timestamp, camera_id=None, caption=None, embedding_path=None):
     conn = sqlite3.connect(DB_PATH)
-    filename = os.path.abspath(filename)  # 🔒 Normalize to absolute path
+    filename = os.path.abspath(filename)  
     c = conn.cursor()
     c.execute('''
         INSERT INTO image_metadata (filename, timestamp, camera_id, caption, embedding_path)

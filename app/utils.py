@@ -65,23 +65,7 @@ def get_image_embedding(model, processor, image: Image.Image, device="cuda" if t
         outputs = model.get_image_features(**inputs)
     return outputs[0]  # Single image
 
-# def load_model():
-#     print(f"[MODEL] Loading CLIP model: {CLIP_MODEL_NAME} on {DEVICE}")
-#     model, processor = clip.load(CLIP_MODEL_NAME, device=DEVICE)
-#     return model, processor, DEVICE
-# def load_model():
-#     model = CLIPModel.from_pretrained(
-#         CLIP_MODEL_NAME,
-#         trust_remote_code=True,
-#         use_safetensors=True
-#     ).to(DEVICE)
-    
-#     processor = CLIPProcessor.from_pretrained(
-#         CLIP_MODEL_NAME,
-#         use_fast=True  # Prevent slow processor warning
-#     )
 
-#     return model, processor, DEVICE
 def load_model():
     from transformers import CLIPModel, CLIPProcessor
     import torch
@@ -94,7 +78,7 @@ def load_model():
         torch_dtype=torch.float32,
         use_safetensors=True,
     )
-    model = model.to(device)  # ✅ move here, after loading
+    model = model.to(device)  # 
 
     processor = CLIPProcessor.from_pretrained(model_name)
     return model, processor, device
@@ -125,7 +109,7 @@ def get_or_cache_image_embeddings(model, processor, image_dir, cache_path):
                     embeddings.append(embedding.squeeze().cpu().numpy())
                     image_paths.append(fpath)
             except Exception as e:
-                print(f"⚠️ Failed to process {fpath}: {e}")
+                print(f" Failed to process {fpath}: {e}")
 
     embeddings = np.stack(embeddings)
     np.savez(cache_path, paths=image_paths, embeddings=embeddings)
@@ -213,33 +197,3 @@ def cleanup_old_images():
         rebuild_cache_without_files(deleted_files)
 
     logging.info(f"[CLEANUP] Finished. Total files deleted: {len(deleted_files)}")
-# def cleanup_old_images():
-#     now = datetime.now()
-#     cutoff = now - timedelta(days=IMAGE_RETENTION_DAYS)
-#     deleted_count = 0
-
-#     logging.info(f"[CLEANUP] Deleting images older than {cutoff.strftime('%Y-%m-%d')}")
-
-#     for root, dirs, files in os.walk(IMAGE_DIR, topdown=False):
-#         for name in files:
-#             if not name.lower().endswith((".jpg", ".jpeg", ".png")):
-#                 continue
-
-#             file_path = os.path.join(root, name)
-#             try:
-#                 file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
-#                 if file_mtime < cutoff:
-#                     os.remove(file_path)
-#                     logging.info(f"[CLEANUP] Deleted: {file_path}")
-#                     deleted_count += 1
-#             except Exception as e:
-#                 logging.error(f"[CLEANUP] Failed to delete {file_path}: {e}")
-
-#         if not os.listdir(root) and root != IMAGE_DIR:
-#             try:
-#                 os.rmdir(root)
-#                 logging.info(f"[CLEANUP] Removed empty folder: {root}")
-#             except Exception as e:
-#                 logging.warning(f"[CLEANUP] Could not remove folder {root}: {e}")
-
-#     logging.info(f"[CLEANUP] Completed. Total files deleted: {deleted_count}")

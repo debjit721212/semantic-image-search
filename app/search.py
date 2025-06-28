@@ -31,15 +31,6 @@ def search_prompt(prompt, image_embeddings, image_paths, model, processor, devic
     results = [(image_paths[i], sims[i]) for i in indices]
     return results
 
-# def perform_search(prompt, threshold, model, processor, device,return_metadata=False ):
-#     paths, embeddings = load_cache(CACHE_PATH)
-#     if not paths or embeddings is None:
-#         return []
-
-#     results = search_prompt(prompt, embeddings, paths, model, processor, device, top_k=TOP_K_RESULTS)
-#     filtered = [(p, s) for p, s in results if s >= threshold]
-#     return filtered
-
 
 def perform_search(prompt, threshold=0.3, model=None, processor=None, device=None, return_metadata=False, file_list=None):
     paths, embeddings = load_cache(CACHE_PATH)

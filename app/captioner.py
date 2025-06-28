@@ -38,28 +38,3 @@ def generate_caption(image_or_path):
     out = model.generate(**inputs, max_new_tokens=25)
     caption = processor.decode(out[0], skip_special_tokens=True)
     return caption
-
-
-
-
-
-
-
-
-
-# from transformers import BlipProcessor, BlipForConditionalGeneration
-# from PIL import Image
-# import torch
-
-# device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# # Load BLIP model once
-# blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-# blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base").to(device)
-
-# def generate_caption(image_path):
-#     image = Image.open(image_path).convert("RGB")
-#     inputs = blip_processor(images=image, return_tensors="pt").to(device)
-#     out = blip_model.generate(**inputs)
-#     caption = blip_processor.decode(out[0], skip_special_tokens=True)
-#     return caption
