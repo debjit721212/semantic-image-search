@@ -67,8 +67,6 @@ def get_image_embedding(model, processor, image: Image.Image, device="cuda" if t
 
 
 def load_model():
-    from transformers import CLIPModel, CLIPProcessor
-    import torch
 
     model_name = "openai/clip-vit-base-patch32"
     device = "cuda" if torch.cuda.is_available() else "cpu"
