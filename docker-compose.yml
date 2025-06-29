@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  clipcap_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clipcap-vision
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./images:/app/images           # Bind host image folder to container
+      - ./data:/app/data               # Bind embeddings + DB
+      - ./doc:/app/doc                 # Screenshots/docs
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    command: streamlit run app/main_app.py --server.port=8501 --server.enableCORS=false
+
+
