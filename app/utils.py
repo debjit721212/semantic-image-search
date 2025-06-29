@@ -6,8 +6,8 @@ from typing import List
 import torch
 import clip
 import numpy as np
-
-from config import DEVICE, CLIP_MODEL_NAME
+import time
+from config import DEVICE,CLIP_MODEL_NAME
 from datetime import datetime, timedelta
 from config import IMAGE_DIR, IMAGE_RETENTION_DAYS,CACHE_PATH
 # from cache_manager import rebuild_cache_without_files
@@ -195,3 +195,26 @@ def cleanup_old_images():
         rebuild_cache_without_files(deleted_files)
 
     logging.info(f"[CLEANUP] Finished. Total files deleted: {len(deleted_files)}")
+
+
+def get_file_list_by_time_and_camera(minutes_back, camera_id=None, image_root="images"):
+    """
+    Returns list of file paths from the past X minutes optionally filtered by camera ID.
+    """
+    now = time.time()
+    threshold_time = now - (minutes_back * 60)
+
+    results = []
+    for root, _, files in os.walk(image_root):
+        if camera_id and camera_id not in root:
+            continue
+        for fname in files:
+            if not fname.lower().endswith(('.jpg', '.png', '.jpeg')):
+                continue
+            path = os.path.join(root, fname)
+            try:
+                if os.path.getmtime(path) >= threshold_time:
+                    results.append(path)
+            except Exception:
+                continue
+    return results

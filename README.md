@@ -1,103 +1,136 @@
-# 🔍 semantic-image-search
+# 🎯 ClipCap Vision: Semantic Image Search + Captioning
 
-**AI-powered semantic image search with live indexing and natural language prompts.**
+> Empower surveillance and media intelligence with real-time CLIP-based image search and BLIP-powered natural language captioning.
 
-This project enables real-time, natural-language-driven search across a folder of images — ideal for video surveillance and security analytics applications.
-
----
-
-## ✨ Features
-
--  **Live Image Indexing**: New images are auto-monitored and indexed from a watched folder.
--  **CLIP-powered Semantics**: Uses [OpenAI CLIP](https://github.com/openai/CLIP) to understand both text and images.
--  **Fast Similarity Search**: Cosine similarity over cached image embeddings for quick lookup.
--  **Flexible Prompt Support**: Supports rich queries like:
-  - `no helmet in last 10 minutes from camera_3`
-  - `person wearing red shirt`
-  - `bike near entrance from camera_1 past hour`
--  **Streamlit UI**: Clean interface to test prompt-based search visually.
--  **Metadata-aware**: Filters based on image timestamp, camera ID, and auto-generated captions.
+![App Screenshot](./doc/Screenshot%20from%202025-06-29%2017-28-17.png)
 
 ---
 
-## 📌 Use Case
+## 🚀 Features
 
-Built for intelligent surveillance, monitoring safety violations, or any real-time image retrieval scenario based on human-readable prompts.
+- 🔎 **Prompt-Based Semantic Search**
+  - Natural language queries like:
+    - `no helmet in last 10 minutes from camera_1`
+    - `person wearing red shirt`
+    - `bike near entrance past hour`
+
+- 📸 **Real-time Image Indexing**
+  - Auto-monitors a folder for new images, updates the FAISS index instantly.
+
+- 🧠 **CLIP + BLIP**
+  - Uses CLIP for semantic similarity and BLIP for caption generation.
+
+- 📊 **Live Violation Dashboard**
+  - Hourly trends, camera-wise distribution, and confidence histograms.
+
+- ⚙️ **Streamlit UI**
+  - Modern, intuitive interface for search, upload, captioning, and analytics.
+
+---
+
+## 🧭 Project Structure
+
+```
+semantic-image-search/
+├── app/
+│   ├── main_app.py           # Streamlit interface
+│   ├── observer.py           # Watchdog-based live folder monitor
+│   ├── search.py             # CLIP-based similarity logic
+│   ├── caption.py            # BLIP caption generator
+│   ├── config.py             # Configurations (paths, thresholds, etc.)
+│   ├── cache_manager.py      # FAISS index + npz embedding cache
+│   ├── database.py           # SQLite metadata manager
+│   ├── analytics_dashboard.py # Violation dashboard
+│   └── utils.py              # Timestamp filters, helpers
+│
+├── scripts/                  # CLI tools for dev/test
+│   ├── start_watcher.py
+│   ├── build_cache.py
+│   ├── clean_old_images.py
+│   └── add_to_db.py
+│
+├── data/
+│   ├── cache/                # FAISS index + embeddings_cache.npz
+│   └── metadata.db           # SQLite metadata
+│
+├── images/                   # Your indexed images go here
+├── doc/                      # README assets, screenshots, etc.
+└── requirements.txt
+```
+
+---
+
+## 📊 Live Violation Dashboard
+
+![Dashboard](./doc/Screenshot%20from%202025-06-29%2017-16-17.png)
+
+- Filter by camera ID or hours
+- Hourly violation bar chart
+- Camera usage pie chart
+- Confidence histogram
+- Full metadata table
 
 ---
 
 ## 🛠️ Getting Started
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/debjit721212/semantic-image-search.git
 cd semantic-image-search
 
-# (Optional) Create a virtual environment
-python -m venv env
-source env/bin/activate  # or env\Scripts\activate on Windows
+# 2. (Optional) Setup virtual environment
+python3 -m venv env
+source env/bin/activate
 
-# Install dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# Launch the app
+# 4. Launch the Streamlit app
 streamlit run app/main_app.py
-Make sure your images and embeddings folder are configured inside config.py.
+```
 
-🧭 Project Structure
-bash
-Copy
-Edit
-semantic-image-search/
-├── app/
-│   ├── main_app.py           # Streamlit UI for prompt-based search
-│   ├── search.py             # Semantic CLIP-based search engine logic
-│   ├── observer.py           # Watches image directory and updates cache
-│   ├── cache_manager.py      # Handles loading/saving image embeddings
-│   ├── captioner.py          # (Optional) Image captioning logic
-│   ├── caption.py            # Generates captions for images
-│   ├── config.py             # Project-wide configurations
-│   ├── utils.py              # Utility functions (time filtering, etc.)
-│   ├── database.py           # Handles SQLite metadata storage
-│   ├── ingest.py             # Image ingestion logic for testing
-│   ├── cleanup.py            # Cleans old images and updates DB/cache
-│   ├── test_database.py      # Simple test to inspect the database
-│   ├── just_test.py          # Miscellaneous test script
-│   └── __pycache__/          # Python bytecode (ignored in Git)
-│
-├── scripts/
-│   ├── build_cache.py        # Build cache of embeddings from image folder
-│   ├── clean_old_images.py   # Clean images older than N days
-│   ├── inspact_acche.py      # Inspect cache file contents
-│   ├── add_to_db.py          # Add metadata from image files to SQLite
-│   └── start_watcher.py      # Script to start file observer
-│
-├── data/
-│   ├── cache/                # Stores embeddings_cache.npz
-│   └── metadata.db           # SQLite DB with image metadata
-│
-├── dummy_image_generator.py  # Script to create test images
-├── image_creator.py          # Creates sample captioned/test images
-├── README.md 
-🚀 Future Plans
- Replace SQLite with vector database (e.g., FAISS / Qdrant).
+---
 
- Integrate real-time video stream captioning + analysis.
+## 🐳 Docker Support
 
- Support visual filters (e.g., bounding box-based search).
+```bash
+# Build image
+docker build -t clipcap-vision .
 
- Dockerized deployment & REST API.
+# Run the app
+docker run -p 8501:8501 -v $(pwd)/images:/app/images clipcap-vision
 
- Multi-camera dashboard for alerts & analytics.
+# Or use docker-compose (if needed)
+docker-compose up --build
 
-🙌 Acknowledgments
-Built with:
+# Stop it
+docker-compose down
+```
 
-OpenAI CLIP
+---
 
-Streamlit
+## 🧪 Future Enhancements
 
-PyTorch
+- ✅ REST API for remote querying
+- ✅ Docker + deployment automation
+- 🔲 Multi-modal alert system
+- 🔲 Replace SQLite with Qdrant or Weaviate
+- 🔲 Live camera stream captioning
 
-📜 License
-MIT License – see LICENSE file for details.
+---
+
+## 🙌 Acknowledgements
+
+- OpenAI CLIP
+- Salesforce BLIP
+- Streamlit
+- FAISS
+
+---
+
+## 📜 License
+
+MIT License — See LICENSE
+
+Built with ❤️ by [@debjit721212](https://github.com/debjit721212)

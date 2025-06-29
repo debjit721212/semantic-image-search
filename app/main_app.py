@@ -7,14 +7,13 @@ from datetime import datetime, timedelta
 from config import IMAGE_DIR
 from search import perform_search
 from cache_manager import ensure_cache
-from database import  init_db,get_all_metadata, get_recent_metadata  #initialize_db,
+from database import init_db, get_all_metadata, get_recent_metadata
 from utils import load_model
 import threading
 from observer import start_observer
 from captioner import generate_caption
 
 # Initialize DB and cleanup
-# initialize_db()
 init_db()
 
 if "cleanup_done" not in st.session_state:
@@ -35,9 +34,8 @@ if "observer_started" not in st.session_state:
     st.session_state["observer_started"] = True
 
 st.set_page_config(page_title="Image Search + Captioning", layout="wide")
-st.title("🔍 CLIP Image Search + 🖼️ BLIP Captioning")
-st.caption("Upload images, perform prompt-based image search, or generate automatic captions")
-os.makedirs(IMAGE_DIR, exist_ok=True)
+st.title("🔍 ClipCap Vision: Semantic Image Search + Captioning")
+st.caption("Empower surveillance and media with AI-driven image search and natural captioning using CLIP and BLIP.")
 
 # --- Utility: Display Results Grid ---
 def display_results_grid(results, images_per_row=2):
@@ -64,7 +62,6 @@ def display_results_grid(results, images_per_row=2):
 def parse_time_and_camera(prompt):
     prompt = prompt.lower()
 
-    # Try to extract time using various patterns
     minutes_match = re.search(r"(last|past)?\s*(\d+)\s*(min|mins|minute|minutes)\b", prompt)
     hours_match = re.search(r"(last|past)?\s*(\d+)\s*(hr|hrs|hour|hours)\b", prompt)
     ago_minutes = re.search(r"(\d+)\s*(min|mins|minute|minutes)\s*ago", prompt)
@@ -80,7 +77,6 @@ def parse_time_and_camera(prompt):
     elif ago_hours:
         delta = timedelta(hours=int(ago_hours.group(1)))
 
-    # Camera match: camera_1, camera 1, cam_001, etc.
     camera_match = re.search(r"(camera|cam)[_\s]*(\d+)", prompt)
     camera_id = f"camera_{camera_match.group(2)}" if camera_match else None
 
@@ -105,7 +101,7 @@ if uploaded_files:
 # --- Prompt-Based Search ---
 st.subheader("🔎 Search with Prompt")
 prompt = st.text_input("Enter search prompt", placeholder="e.g., a person without helmet")
-threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.3, 0.01)
+threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.22, 0.01)
 
 if st.button("Search") and prompt.strip():
     with st.spinner("Searching..."):

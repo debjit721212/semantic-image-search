@@ -9,9 +9,15 @@ import os
 
 DB_PATH = Path("data/metadata.db")
 
+def get_connection():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    return conn
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+
+    # Create table if it doesn't exist
     c.execute('''
         CREATE TABLE IF NOT EXISTS image_metadata (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +28,17 @@ def init_db():
             embedding_path TEXT
         )
     ''')
+
+    # 🔧 Add 'confidence' column if it doesn't exist
+    try:
+        c.execute("ALTER TABLE image_metadata ADD COLUMN confidence REAL")
+        print("[DB INIT] Added missing 'confidence' column.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            pass  # Already exists
+        else:
+            raise
+
     conn.commit()
     conn.close()
 
@@ -122,3 +139,28 @@ def get_metadata(filepath):
         }
     else:
         return {}
+
+def get_all_metadata():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        df = pd.read_sql_query("SELECT * FROM image_metadata", conn)
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"[DB ERROR] Failed to fetch metadata: {e}")
+        return pd.DataFrame()  # <-- ensures we return a DataFrame
+
+def save_metadata(data: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO image_metadata (filename, timestamp, camera_id, confidence)
+        VALUES (?, ?, ?, ?)
+    ''', (
+        data["filename"],
+        data["timestamp"],
+        data.get("camera_id", "unknown"),
+        data.get("confidence", None)
+    ))
+    conn.commit()
+    conn.close()

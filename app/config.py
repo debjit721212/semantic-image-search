@@ -7,6 +7,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 DB_PATH = DATA_DIR / "metadata.db"
 # DB_PATH = os.path.join("data", "metadata.db")
+# FAISS index paths
+FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
+FAISS_PATHS_PATH = DATA_DIR / "paths.pkl"
 
 
 # Base directories
