@@ -1,20 +1,89 @@
-# app/utils.py
 import os
-from PIL import Image, UnidentifiedImageError
 import logging
+from PIL import Image, UnidentifiedImageError
 from typing import List
 import torch
-import clip
 import numpy as np
-import time
-from config import DEVICE,CLIP_MODEL_NAME
 from datetime import datetime, timedelta
-from config import IMAGE_DIR, IMAGE_RETENTION_DAYS,CACHE_PATH
-# from cache_manager import rebuild_cache_without_files
+import chromadb
+from transformers import CLIPProcessor, CLIPModel, pipeline
+from config import DEVICE, CLIP_MODEL_NAME, IMAGE_DIR, IMAGE_RETENTION_DAYS, CACHE_PATH,lora_weights_path
 from database import delete_metadata_for_images
+import time
+from transformers import pipeline
+from langchain.chains import RetrievalQA
+from langchain.llms import HuggingFacePipeline
+from langchain.vectorstores import Chroma
+from peft import PeftModel, LoraConfig, get_peft_model
 
 logger = logging.getLogger(__name__)
-from transformers import CLIPProcessor, CLIPModel
+
+# --- ChromaDB Setup ---
+chroma_client = chromadb.Client()
+chroma_collection = chroma_client.get_or_create_collection(name="surveillance_embeddings")
+
+def insert_embedding_chroma(embedding, image_path, caption, camera_id, timestamp):
+    chroma_collection.add(
+        embeddings=[embedding],
+        metadatas=[{
+            "image_path": str(image_path),
+            "caption": caption,
+            "camera_id": camera_id,
+            "timestamp": timestamp
+        }],
+        ids=[str(image_path)]
+    )
+    logger.info(f"[ChromaDB] Inserted embedding for {image_path}")
+
+def delete_embeddings_by_image_paths(image_paths):
+    chroma_collection.delete(ids=[str(p) for p in image_paths])
+    logger.info(f"[ChromaDB] Deleted embeddings for {len(image_paths)} images")
+
+def compute_embedding(image_path, model, processor, device=DEVICE):
+    image = load_image_safe(image_path)
+    if image is None:
+        return None
+    return get_image_embedding(model, processor, image, device)
+
+# --- RAG LLM Pipeline ---
+rag_llm = pipeline("text2text-generation", model="google/flan-t5-base", max_new_tokens=256)
+
+def call_llm_with_context(user_question, context_captions):
+    context = "\n".join(context_captions)
+    prompt = (
+        f"Based on the following surveillance events, answer the question: '{user_question}'\n\n"
+        f"Events:\n{context}\n\n"
+        "Answer:"
+    )
+    response = rag_llm(prompt)
+    return response[0]["generated_text"].strip()
+
+def retrieve_top_k_from_chroma(query, text_encoder, chroma_collection, k=5, time_filter=None, camera_filter=None):
+    query_embedding = text_encoder.encode(query).tolist()
+    where = {}
+    if time_filter:
+        where["timestamp"] = {"$gte": time_filter}
+    if camera_filter:
+        where["camera_id"] = camera_filter
+    results = chroma_collection.query(
+        query_embeddings=[query_embedding],
+        n_results=k,
+        include=["metadatas", "distances"],
+        where=where if where else None
+    )
+    return results
+
+def get_langchain_agent(rag_llm, chroma_collection):
+    llm = HuggingFacePipeline(pipeline=rag_llm)
+    vectorstore = Chroma(collection=chroma_collection)
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=llm,
+        retriever=vectorstore.as_retriever(),
+        return_source_documents=True
+    )
+    return qa_chain
+
+# ------------------ Image Utilities ------------------
 
 def load_image_safe(path):
     try:
@@ -30,20 +99,15 @@ def load_image_safe(path):
 def ensure_dirs(*dirs):
     for d in dirs:
         os.makedirs(d, exist_ok=True)
-        
+
 def is_image_file(filename):
     valid_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
     return any(filename.lower().endswith(ext) for ext in valid_extensions)
 
 def get_date_folder_name():
-    from datetime import datetime
     return datetime.now().strftime("%Y-%m-%d")
 
 def load_images_batched(image_paths: List[str], batch_size: int = 128) -> List[List[Image.Image]]:
-    """
-    Splits a list of image paths into batches and loads the images.
-    Returns a list of batches, each containing PIL.Image objects.
-    """
     batches = []
     for i in range(0, len(image_paths), batch_size):
         batch_paths = image_paths[i:i + batch_size]
@@ -53,115 +117,50 @@ def load_images_batched(image_paths: List[str], batch_size: int = 128) -> List[L
                 img = Image.open(path).convert("RGB")
                 images.append(img)
             except Exception as e:
-                logging.warning(f"[load_images_batched] Failed to load image {path}: {e}")
+                logger.warning(f"[load_images_batched] Failed to load image {path}: {e}")
         if images:
             batches.append(images)
     return batches
 
-def get_image_embedding(model, processor, image: Image.Image, device="cuda" if torch.cuda.is_available() else "cpu"):
-    # inputs = processor(images=image, return_tensors="pt").to(device)
-    inputs = processor(images=image, return_tensors="pt").to(DEVICE)
+# def get_image_embedding(model, processor, image: Image.Image, device=DEVICE):
+#     inputs = processor(images=image, return_tensors="pt").to(device)
+#     with torch.no_grad():
+#         outputs = model.get_image_features(**inputs)
+#     return outputs[0].cpu().tolist()  # Return as list for ChromaDB
+
+def get_image_embedding(model, processor, image: Image.Image, device):
+    import sys
+    print(f"[DEBUG] device passed to get_image_embedding: {device}")
+    print(f"[DEBUG] device type: {type(device)}, value: {device}")
+    inputs = processor(images=image, return_tensors="pt")
+    # Force to CUDA for testing
+    inputs["pixel_values"] = inputs["pixel_values"].to("cuda")
+    model = model.to("cuda")
+    print(f"[DEBUG] (After moving) Model device: {next(model.parameters()).device}")
+    print(f"[DEBUG] (After moving) Input device: {inputs['pixel_values'].device}")
+    sys.stdout.flush()
+    assert inputs["pixel_values"].device == next(model.parameters()).device, "Device mismatch!"
     with torch.no_grad():
-        outputs = model.get_image_features(**inputs)
-    return outputs[0]  # Single image
+        outputs = model.get_image_features(pixel_values=inputs["pixel_values"])
+    return outputs[0].cpu().tolist()
 
+def load_lora_model(lora_weights_path=lora_weights_path, base_model_name=CLIP_MODEL_NAME, device=DEVICE):
+    """
+    Loads a CLIP model with LoRA weights applied.
+    """
+    base_model = CLIPModel.from_pretrained(base_model_name).to(device)
+    processor = CLIPProcessor.from_pretrained(base_model_name)
+    # Load LoRA weights
+    lora_model = PeftModel.from_pretrained(base_model, lora_weights_path)
+    lora_model = lora_model.to(device)
+    return lora_model, processor, device
 
-def load_model():
-
-    model_name = "openai/clip-vit-base-patch32"
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    model = CLIPModel.from_pretrained(
-        model_name,
-        torch_dtype=torch.float32,
-        use_safetensors=True,
-    )
-    model = model.to(device)  # 
-
-    processor = CLIPProcessor.from_pretrained(model_name)
-    return model, processor, device
-
-def get_or_cache_image_embeddings(model, processor, image_dir, cache_path):
-
-
-    if os.path.exists(cache_path):
-        print(f"[CACHE] Loading image embeddings from {cache_path}")
-        data = np.load(cache_path, allow_pickle=True)
-        return data["paths"], data["embeddings"]
-
-    print("[CACHE] Building image embeddings...")
-    image_paths = []
-    embeddings = []
-
-    for root, _, files in os.walk(image_dir):
-        for fname in sorted(files):
-            if not fname.lower().endswith((".jpg", ".jpeg", ".png")):
-                continue
-            fpath = os.path.join(root, fname)
-            try:
-                image = Image.open(fpath).convert("RGB")
-                inputs = processor(images=image, return_tensors="pt").to(DEVICE)
-                with torch.no_grad():
-                    embedding = model.get_image_features(**inputs)
-                    embedding = embedding / embedding.norm(p=2, dim=-1, keepdim=True)
-                    embeddings.append(embedding.squeeze().cpu().numpy())
-                    image_paths.append(fpath)
-            except Exception as e:
-                print(f" Failed to process {fpath}: {e}")
-
-    embeddings = np.stack(embeddings)
-    np.savez(cache_path, paths=image_paths, embeddings=embeddings)
-    print(f"[CACHE] Saved to {cache_path}")
-    return image_paths, embeddings
-
-def encode_image_file(image_path, model, processor):
-    image = Image.open(image_path).convert("RGB")
-    inputs = processor(images=image, return_tensors="pt").to(model.device)
-    with torch.no_grad():
-        embedding = model.get_image_features(**inputs).cpu().numpy()
-    return embedding
-
-def save_cache(cache_path, image_paths, embeddings):
-    try:
-        np.savez(cache_path, paths=np.array(image_paths), embeddings=embeddings)
-        logger.info(f"[cache] Saved cache with {len(image_paths)} images")
-    except Exception as e:
-        logger.error(f"[cache] Error saving cache: {e}")
-
-def rebuild_cache_without_files(files_to_exclude):
-    try:
-        if not os.path.exists(CACHE_PATH):
-            logger.warning("[cache] Cache file not found. Nothing to rebuild.")
-            return
-
-        cache = np.load(CACHE_PATH, allow_pickle=True)
-        paths = cache['paths'].tolist()
-        embeddings = cache['embeddings']
-
-        # Build new lists
-        new_paths = []
-        new_embeddings = []
-        for i, p in enumerate(paths):
-            if p not in files_to_exclude:
-                new_paths.append(p)
-                new_embeddings.append(embeddings[i])
-
-        if new_embeddings:
-            new_embeddings = np.vstack(new_embeddings)
-        else:
-            new_embeddings = np.empty((0, 512))
-
-        save_cache(CACHE_PATH, new_paths, new_embeddings)
-        logger.info(f"[cache] Rebuilt cache excluding {len(files_to_exclude)} files")
-
-    except Exception as e:
-        logger.error(f"[cache] Error rebuilding cache: {e}")
 
 def cleanup_old_images():
     now = datetime.now()
     cutoff = now - timedelta(days=IMAGE_RETENTION_DAYS)
     deleted_files = []
-    
+
     logging.info(f"[CLEANUP] Starting cleanup. Deleting images older than {cutoff.strftime('%Y-%m-%d')}")
 
     for root, dirs, files in os.walk(IMAGE_DIR, topdown=False):
@@ -179,31 +178,22 @@ def cleanup_old_images():
             except Exception as e:
                 logging.error(f"[CLEANUP] Failed to delete {file_path}: {e}")
 
-        # Remove empty dated folders
         if not os.listdir(root) and root != IMAGE_DIR:
             try:
                 os.rmdir(root)
                 logging.info(f"[CLEANUP] Removed empty folder: {root}")
             except Exception as e:
-                logging.warning(f"[CLEANUP] Could not remove folder {root}: {e}")
+                logging.warning(f"[CLEANUP] Could not remove folder: {root}: {e}")
 
     if deleted_files:
-        # Step 2: Delete from metadata DB
         delete_metadata_for_images(deleted_files)
-
-        # Step 3: Rebuild embeddings cache without deleted images
         rebuild_cache_without_files(deleted_files)
 
     logging.info(f"[CLEANUP] Finished. Total files deleted: {len(deleted_files)}")
 
-
 def get_file_list_by_time_and_camera(minutes_back, camera_id=None, image_root="images"):
-    """
-    Returns list of file paths from the past X minutes optionally filtered by camera ID.
-    """
     now = time.time()
     threshold_time = now - (minutes_back * 60)
-
     results = []
     for root, _, files in os.walk(image_root):
         if camera_id and camera_id not in root:
@@ -218,3 +208,81 @@ def get_file_list_by_time_and_camera(minutes_back, camera_id=None, image_root="i
             except Exception:
                 continue
     return results
+
+
+# --- Video Search & Metadata Helpers ---
+
+def compute_video_embedding(key_frame_paths, model, processor, device):
+    """
+    Compute a video-level embedding as the mean of key frame embeddings.
+    """
+    import numpy as np
+    embeddings = []
+    for f in key_frame_paths:
+        image = load_image_safe(f)
+        if image is not None:
+            emb = get_image_embedding(model, processor, image, device)
+            embeddings.append(emb)
+    if embeddings:
+        return np.mean(embeddings, axis=0).tolist()
+    else:
+        return [0.0] * 512  # fallback
+
+def generate_video_summary_caption(key_frame_paths):
+    """
+    Generate a summary caption for a video by concatenating key frame captions.
+    """
+    captions = []
+    for f in key_frame_paths:
+        try:
+            cap = generate_caption(f)
+            captions.append(cap)
+        except Exception as e:
+            logger.warning(f"[utils] Failed to generate caption for {f}: {e}")
+    return " ; ".join(captions)
+
+def get_video_key_frames(frames_dir, interval=10):
+    """
+    Select key frames from a directory (e.g., every Nth frame).
+    """
+    files = [os.path.join(frames_dir, f) for f in sorted(os.listdir(frames_dir)) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
+    key_frames = [f for idx, f in enumerate(files) if idx % interval == 0]
+    return key_frames
+
+def video_to_frame_mapping(video_metadata_df):
+    """
+    Build a mapping from video_path to its key frames (for analytics/UI).
+    """
+    mapping = {}
+    for _, row in video_metadata_df.iterrows():
+        video_path = row["video_path"]
+        key_frames = row["key_frames"].split(",") if row["key_frames"] else []
+        mapping[video_path] = key_frames
+    return mapping
+
+def insert_video_metadata_chroma(
+    video_embedding,
+    video_path,
+    start_time,
+    end_time,
+    camera_id,
+    summary_caption,
+    key_frames,
+    chroma_collection=chroma_collection
+    ):
+    """
+    Insert video-level embedding and metadata into ChromaDB.
+    """
+    chroma_collection.add(
+        embeddings=[video_embedding],
+        metadatas=[{
+            "video_path": str(video_path),
+            "start_time": start_time,
+            "end_time": end_time,
+            "camera_id": camera_id,
+            "summary_caption": summary_caption,
+            "key_frames": key_frames  # list of frame paths
+        }],
+        ids=[str(video_path)]
+    )
+    logger.info(f"[ChromaDB] Inserted video metadata for {video_path}")

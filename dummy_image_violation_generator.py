@@ -1,9 +1,11 @@
 import os
 import shutil
 import time
+import random
 from datetime import datetime
-# from app.database import save_metadata  # Make sure this is implemented
+from PIL import Image
 
+# Source and destination directories
 SOURCE_DIR = "/home/debjit/spacy/image_search_from_folder/images/archive/images"
 DEST_BASE_DIR = "/home/debjit/Videos/debjit_project/smart_search/semantic-image-search/images"
 today = datetime.today().strftime("%Y-%m-%d")
@@ -21,30 +23,38 @@ all_images = sorted([
     if f.lower().endswith((".jpg", ".jpeg", ".png"))
 ])
 
+# Optionally, randomize camera IDs for more realism
+camera_ids = [f"cam_{i:03d}" for i in range(1, camera_count + 1)]
+
 for filename in all_images:
     name_base = os.path.splitext(filename)[0]
     ext = os.path.splitext(filename)[1].lower()
-
-    # Generate final filename for DEST_DIR
-    cam_id = f"cam_{(image_counter % camera_count) + 1:03d}"
+    cam_id = random.choice(camera_ids)
     new_filename = f"{cam_id}_violation_{name_base}{ext}"
 
     if new_filename in pushed_set:
-        continue  # Skip already pushed
+        continue
 
     src_path = os.path.join(SOURCE_DIR, filename)
     dest_path = os.path.join(DEST_DIR, new_filename)
+    temp_path = dest_path + ".tmp"
 
-    shutil.copy2(src_path, dest_path)  # ✅ keep original
+    # Validate before copying
+    try:
+        img = Image.open(src_path)
+        img.verify()
+    except Exception as e:
+        print(f"Skipping {filename}: {e}")
+        continue
 
-    # # Save metadata
-    # save_metadata({
-    #     "filename": dest_path,
-    #     "timestamp": datetime.now().isoformat(),
-    #     "camera_id": cam_id,
-    #     "confidence": round(0.6 + 0.4 * (image_counter % 10) / 10.0, 2)
-    # })
-
+    # Atomic move: copy to temp, then rename
+    shutil.copy2(src_path, temp_path)
+    os.rename(temp_path, dest_path)
     print(f"✅ Pushed {new_filename}")
+    pushed_set.add(new_filename)
     image_counter += 1
+
+    # Simulate real-time ingestion (optional)
     time.sleep(20)  # ⏱️ wait 20 seconds before pushing next
+
+print("✅ All images pushed to observer folder.")

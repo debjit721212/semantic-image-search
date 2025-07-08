@@ -3,3 +3,21 @@ __pycache__/
 *.db
 *.npz
 images/
+lora_checkpoints/
+openclip_lora_peft_adapter*/
+q_lora_checkpoints/
+video_chunks/
+frames/
+data/cache/
+*.log
+*.tmp
+*.pth
+*.bin
+*.safetensors
+
+# Ignore Python cache and system files
+__pycache__/
+*.pyc
+.DS_Store
+.env
+openclip_env/

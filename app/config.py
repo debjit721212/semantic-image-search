@@ -15,6 +15,7 @@ FAISS_PATHS_PATH = DATA_DIR / "paths.pkl"
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 IMAGE_DIR = BASE_DIR / "images"
+FRAMES_DIR= BASE_DIR / "frames"
 CACHE_DIR = BASE_DIR / "data" / "cache"
 LOG_DIR = BASE_DIR / "data" / "logs"
 METADATA_DB = BASE_DIR / "data" / "metadata.db"
@@ -30,6 +31,8 @@ IMAGE_RETENTION_DAYS = 30
 # CLIP_MODEL_NAME = "ViT-L/14"
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 BLIP_MODEL_NAME = "Salesforce/blip-image-captioning-base"
+# lora_weights_path = "/home/debjit/Videos/debjit_project/smart_search/semantic-image-search/openclip_lora_output/clip_lora_epoch60_adapter"
+lora_weights_path = "/home/debjit/Videos/debjit_project/smart_search/semantic-image-search/openclip_lora_peft_adapter_custom"
 
 # Device settings
 DEVICE = "cuda" if os.environ.get("USE_CUDA", "1") == "1" and torch.cuda.is_available() else "cpu"
