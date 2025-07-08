@@ -1,37 +1,74 @@
-🔎 ClipCap Vision: Semantic Image & Video Search + Captioning
-AI-powered, real-time search and analytics for surveillance, media, and enterprise.
-Find, caption, and analyze both images and videos using CLIP+LoRA, BLIP, and a modern RAG Q&A pipeline.
+# 🔎 ClipCap Vision: Semantic Image & Video Search + Captioning
 
-🚀 Features
-Multi-Modal Semantic Search
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/streamlit-ready-brightgreen)](https://streamlit.io/)
 
-Natural language queries for both images and videos
-Example:
-no helmet in last 10 minutes from camera_1
-person with a dog
-show me video of a man in a red shirt
-Real-Time Ingestion & Indexing
+> **AI-powered, real-time search, captioning, and analytics for surveillance, media, and enterprise.**
+>  
+> **Find, caption, and analyze both images and videos using CLIP+LoRA, BLIP, and a modern RAG Q&A pipeline.**
 
-Auto-monitors folders for new images and videos
-Extracts frames from videos, tags with CLIP/LoRA + BLIP
-RAG Q&A (Retrieval-Augmented Generation)
+---
 
-Ask questions about your data (images or videos)
-Centralized, context-aware answers (not just search)
-Live Analytics Dashboard
+## 🚀 Features
 
-Hourly trends, camera-wise distribution, confidence histograms
-Video analytics: violations per video, duration, event timeline
-Modern Streamlit UI
+- 🔎 **Multi-Modal Semantic Search**  
+  - Natural language queries for both images and videos  
+  - Example:  
+    - `no helmet in last 10 minutes from camera_1`
+    - `person with a dog`
+    - `show me video of a man in a red shirt`
 
-Tabs for image and video search
-Upload, search, caption, and analytics in one place
-Production-Ready Pipeline
+- 📸 **Real-Time Ingestion & Indexing**  
+  - Auto-monitors folders for new images and videos  
+  - Extracts frames from videos, tags with CLIP/LoRA + BLIP
 
-ChromaDB for fast, scalable vector search
-SQLite for metadata/analytics
-Docker support for easy deployment
+- 🤖 **RAG Q&A (Retrieval-Augmented Generation)**  
+  - Ask questions about your data (images or videos)  
+  - Centralized, context-aware answers (not just search)
 
+- 📊 **Live Analytics Dashboard**  
+  - Hourly trends, camera-wise distribution, confidence histograms  
+  - Video analytics: violations per video, duration, event timeline
+
+- ⚙️ **Modern Streamlit UI**  
+  - Tabs for image and video search  
+  - Upload, search, caption, and analytics in one place
+
+- 🏗️ **Production-Ready Pipeline**  
+  - ChromaDB for fast, scalable vector search  
+  - SQLite for metadata/analytics  
+  - Docker support for easy deployment
+
+---
+
+## 🧠 How It Works
+
+[Images/Videos] → [Observer] → [Frame Extraction] → [CLIP/LoRA + BLIP Tagging] ↓ [ChromaDB (Embeddings + Captions)] ← [RAG Q&A] ← [User Query] ↓ [Streamlit UI: Search, Q&A, Analytics] ↓ [SQLite: Metadata, Analytics]
+
+
+- **Images and videos are ingested in real time.**
+- **Videos are split into frames, each frame is tagged and indexed.**
+- **All embeddings and captions are stored in ChromaDB for fast semantic search.**
+- **Metadata is stored in SQLite for analytics and reporting.**
+- **RAG Q&A lets you ask questions about your data and get context-aware answers.**
+- **Streamlit UI provides a modern, user-friendly interface for search, upload, and analytics.**
+
+---
+
+## 🏋️‍♂️ Model Training Pipeline
+
+- **CLIP + LoRA**:  
+  - Pretrained on Flickr30k for general vision-language grounding  
+  - Fine-tuned on your custom surveillance/violation dataset for domain adaptation
+
+- **BLIP**:  
+  - Used for automatic, high-quality captioning of both images and video frames
+
+- **RAG Q&A**:  
+  - Centralized, multi-modal search and Q&A over both images and videos
+
+---
 
 ## 🖼️ Screenshots
 
@@ -50,7 +87,11 @@ Docker support for easy deployment
 ### Video Event Timeline
 ![Video Event Timeline](./doc/video_event_timeline.png)
 
-🧭 Project Structure
+---
+
+## 🧭 Project Structure
+
+```text
 semantic-image-search/
 ├── app/
 │   ├── main_app.py           # Streamlit UI (image/video search, Q&A)
@@ -109,13 +150,6 @@ Camera usage pie chart
 Confidence histogram
 Video analytics: violations per video, duration, event timeline
 Full metadata table
-🤖 How It Works
-Images and videos are ingested in real time.
-Videos are split into frames, each frame is tagged and indexed.
-All embeddings and captions are stored in ChromaDB for fast semantic search.
-Metadata is stored in SQLite for analytics and reporting.
-RAG Q&A lets you ask questions about your data and get context-aware answers.
-Streamlit UI provides a modern, user-friendly interface for search, upload, and analytics.
 🧪 Future Enhancements
 ✅ REST API for remote querying
 ✅ Docker + deployment automation
@@ -140,4 +174,5 @@ Solves real-world surveillance and media search problems
 Handles both images and videos, with RAG Q&A
 Production-ready, scalable, and open source
 Modern, modular, and easy to extend
+
 Try it, contribute, and make AI-powered vision search better for everyone!
